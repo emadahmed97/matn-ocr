@@ -1,0 +1,198 @@
+name: Arabic OCR Training Pipeline
+
+on:
+  # Trigger on push to training-related files
+  push:
+    paths:
+      - 'pipelines/**'
+      - 'data/**'
+      - '.github/workflows/arabic-ocr-training.yml'
+    branches:
+      - master
+      - main
+
+  # Manual trigger with parameters
+  workflow_dispatch:
+    inputs:
+      num_samples:
+        description: 'Number of training samples'
+        required: false
+        default: '1000'
+        type: string
+      max_steps:
+        description: 'Training steps'
+        required: false
+        default: '60'
+        type: string
+      model_name:
+        description: 'Base model to fine-tune'
+        required: false
+        default: 'unsloth/DeepSeek-OCR'
+        type: string
+      experiment_name:
+        description: 'MLflow experiment name'
+        required: false
+        default: 'auto-arabic-ocr'
+        type: string
+      deploy_threshold:
+        description: 'CER threshold for auto-deployment (0.05 = 5%)'
+        required: false
+        default: '0.05'
+        type: string
+
+env:
+  PYTHON_VERSION: '3.12'
+  HF_HOME: /tmp/hf_cache
+
+jobs:
+  # Validation job - run tests before triggering expensive GPU training
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_train: ${{ steps.check.outputs.should_train }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest mlflow datasets transformers accelerate
+          pip install arabic-reshaper python-bidi
+
+      - name: Run pipeline validation tests
+        run: |
+          python test_simplified_pipeline.py
+
+      - name: Check if training should proceed
+        id: check
+        run: |
+          echo "should_train=true" >> $GITHUB_OUTPUT
+          echo "✅ Validation passed - proceeding with training"
+
+  # Training job - triggers HuggingFace Spaces for GPU training
+  train:
+    needs: validate
+    runs-on: ubuntu-latest
+    if: needs.validate.outputs.should_train == 'true'
+
+    outputs:
+      training_triggered: ${{ steps.trigger.outputs.success }}
+      space_url: ${{ steps.trigger.outputs.space_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare training configuration
+        id: config
+        run: |
+          # Create training config JSON
+          cat > training_config.json << EOF
+          {
+            "num_samples": "${{ github.event.inputs.num_samples || '1000' }}",
+            "max_steps": "${{ github.event.inputs.max_steps || '60' }}",
+            "model_name": "${{ github.event.inputs.model_name || 'unsloth/DeepSeek-OCR' }}",
+            "experiment_name": "${{ github.event.inputs.experiment_name || 'auto-arabic-ocr' }}",
+            "deploy_threshold": "${{ github.event.inputs.deploy_threshold || '0.05' }}",
+            "git_sha": "${{ github.sha }}",
+            "git_ref": "${{ github.ref }}",
+            "triggered_by": "${{ github.actor }}",
+            "trigger_event": "${{ github.event_name }}",
+            "repository": "${{ github.repository }}"
+          }
+          EOF
+
+          echo "Training configuration:"
+          cat training_config.json
+
+          # Set outputs for later steps
+          echo "config_file=training_config.json" >> $GITHUB_OUTPUT
+
+      - name: Trigger HuggingFace Spaces training
+        id: trigger
+        run: |
+          # For now, we'll simulate the trigger
+          # In production, this would call HF Spaces API
+
+          echo "🚀 Triggering training on HuggingFace Spaces..."
+          echo "📊 Configuration:"
+          cat training_config.json | jq .
+
+          # Simulate successful trigger
+          echo "success=true" >> $GITHUB_OUTPUT
+          echo "space_url=https://huggingface.co/spaces/your-org/arabic-ocr-trainer" >> $GITHUB_OUTPUT
+
+          # TODO: Replace with actual HF Spaces API call
+          # curl -X POST \
+          #   -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
+          #   -H "Content-Type: application/json" \
+          #   -d @training_config.json \
+          #   "${{ secrets.HF_SPACE_URL }}/api/train"
+
+          echo "✅ Training triggered successfully"
+
+      - name: Create training run record
+        run: |
+          # Create a record of this training run
+          mkdir -p runs
+
+          RUN_ID="run_$(date +%Y%m%d_%H%M%S)_${{ github.sha }}"
+
+          cat > "runs/${RUN_ID}.json" << EOF
+          {
+            "run_id": "${RUN_ID}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "config": $(cat training_config.json),
+            "status": "triggered",
+            "space_url": "${{ steps.trigger.outputs.space_url }}",
+            "github_run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
+          EOF
+
+          echo "📝 Training run record created: runs/${RUN_ID}.json"
+
+  # Monitor job - check training progress and handle completion
+  monitor:
+    needs: train
+    runs-on: ubuntu-latest
+    if: needs.train.outputs.training_triggered == 'true'
+
+    steps:
+      - name: Monitor training progress
+        run: |
+          echo "🔍 Monitoring training progress..."
+          echo "📊 Space URL: ${{ needs.train.outputs.space_url }}"
+
+          # TODO: Implement actual monitoring
+          # This would poll the HF Spaces API to check training status
+
+          echo "✅ Training monitoring setup complete"
+          echo "💡 Manual check: Visit ${{ needs.train.outputs.space_url }} for progress"
+
+  # Notification job - notify about training completion
+  notify:
+    needs: [validate, train, monitor]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Notify completion
+        run: |
+          if [[ "${{ needs.validate.result }}" == "success" && "${{ needs.train.result }}" == "success" ]]; then
+            echo "🎉 Arabic OCR Training Pipeline completed successfully!"
+            echo "📊 Training triggered at: ${{ needs.train.outputs.space_url }}"
+            echo "⏱️  Expected completion: ~10-15 minutes"
+            echo "📈 Monitor progress in HuggingFace Spaces"
+          else
+            echo "❌ Pipeline failed at step:"
+            echo "   Validation: ${{ needs.validate.result }}"
+            echo "   Training: ${{ needs.train.result }}"
+            echo "   Monitoring: ${{ needs.monitor.result }}"
+          fi

@@ -1,0 +1,47 @@
+{
+  "training_configs": {
+    "quick_test": {
+      "num_samples": 100,
+      "max_steps": 10,
+      "description": "Quick validation run for testing"
+    },
+    "development": {
+      "num_samples": 1000,
+      "max_steps": 60,
+      "description": "Standard development training"
+    },
+    "production": {
+      "num_samples": 5000,
+      "max_steps": 200,
+      "deploy_threshold": 0.03,
+      "description": "Full production training run"
+    },
+    "experiment": {
+      "num_samples": 2000,
+      "max_steps": 100,
+      "model_name": "microsoft/trocr-base-arabic",
+      "experiment_name": "trocr-comparison",
+      "description": "Experimental model comparison"
+    }
+  },
+
+  "model_options": {
+    "deepseek_ocr": "unsloth/DeepSeek-OCR",
+    "trocr_arabic": "microsoft/trocr-base-arabic",
+    "custom_model": "your-org/custom-arabic-ocr"
+  },
+
+  "performance_thresholds": {
+    "strict": 0.03,
+    "standard": 0.05,
+    "lenient": 0.08,
+    "development": 0.10
+  },
+
+  "cost_estimates": {
+    "quick_test": "$0.02",
+    "development": "$0.10",
+    "production": "$0.30",
+    "note": "Based on L4 GPU at $0.60/hour"
+  }
+}
