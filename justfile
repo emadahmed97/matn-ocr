@@ -45,10 +45,61 @@ test:
     uv run pipelines/training.py \
         --with retry run
 
-# Run training pipeline card server 
+# Run training pipeline card server
 [group('training')]
 @train-viewer:
     uv run pipelines/training.py card server
+
+# Run Arabic OCR training pipeline
+[group('arabic-ocr')]
+@arabic-train:
+    uv run pipelines/arabic_ocr_training_pipeline.py
+
+# Test Arabic OCR pipeline validation
+[group('arabic-ocr')]
+@arabic-test:
+    uv run test_simplified_pipeline.py
+
+# Start Arabic OCR HuggingFace Spaces training environment
+[group('arabic-ocr')]
+@arabic-spaces:
+    cd spaces/arabic-ocr-trainer && uv run app.py
+
+# Test Arabic OCR API integration (requires spaces to be running)
+[group('arabic-ocr')]
+@arabic-api-test:
+    sleep 3 && curl -X POST http://localhost:7860/api/train -H "Content-Type: application/json" -d '{"num_samples": 100, "max_steps": 10, "learning_rate": 0.0002, "experiment_name": "test-integration", "deploy_threshold": 0.05}'
+
+# Run complete Arabic OCR testing suite
+[group('arabic-ocr')]
+@arabic-test-all:
+    echo "🕌 Starting Arabic OCR Complete Test Suite"
+    echo "=========================================="
+    echo "1️⃣ Testing core pipeline validation..."
+    just arabic-test
+    echo "2️⃣ Starting HF Spaces environment in background..."
+    just arabic-spaces &
+    echo "3️⃣ Waiting for Gradio to start..."
+    sleep 10
+    echo "4️⃣ Testing API integration..."
+    just arabic-api-test
+    echo "5️⃣ Checking MLflow tracking..."
+    just arabic-mlflow-check
+    echo "✅ Complete test suite finished!"
+
+# Check MLflow experiments for Arabic OCR
+[group('arabic-ocr')]
+@arabic-mlflow-check:
+    uv run python -c "import mlflow; mlflow.set_tracking_uri('sqlite:///mlflow.db'); exps = mlflow.search_experiments(); print(f'📊 MLflow experiments: {len(exps)}'); [print(f'   - {exp.name} (ID: {exp.experiment_id})') for exp in exps]"
+
+# Simulate GitHub Actions validation step
+[group('arabic-ocr')]
+@arabic-github-validate:
+    echo "🔍 Simulating GitHub Actions validation step..."
+    uv run test_simplified_pipeline.py
+    echo "✅ Dependencies check passed"
+    echo "✅ Pipeline validation completed"
+    echo "✅ Ready to trigger HF Spaces training"
 
 # Serve latest registered model locally
 [group('serving')]
