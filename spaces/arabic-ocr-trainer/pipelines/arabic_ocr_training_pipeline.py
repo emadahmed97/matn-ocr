@@ -14,31 +14,39 @@ from typing import Dict, List, Any, Optional
 import mlflow
 import torch
 from datasets import load_dataset
-from transformers import Trainer, TrainingArguments
 import json
+
+# Import Unsloth FIRST before transformers (required by Unsloth)
+try:
+    import unsloth
+    from unsloth import FastVisionModel, is_bf16_supported
+    UNSLOTH_AVAILABLE = True
+except ImportError as e:
+    UNSLOTH_AVAILABLE = False
+    print(f"⚠️ Unsloth not available: {e}. Install with: pip install unsloth")
+
+# Now import transformers after Unsloth
+from transformers import Trainer, TrainingArguments
+if UNSLOTH_AVAILABLE:
+    from transformers import AutoModel
+
+# Check GPU availability
+try:
+    if torch.cuda.is_available() and UNSLOTH_AVAILABLE:
+        GPU_AVAILABLE = True
+    else:
+        GPU_AVAILABLE = False
+        if not torch.cuda.is_available():
+            print("⚠️ GPU not available. Training requires CUDA-compatible GPU.")
+        if not UNSLOTH_AVAILABLE:
+            print("⚠️ Unsloth not available for GPU acceleration.")
+except Exception:
+    GPU_AVAILABLE = False
 
 # Import our MLflow integration
 import sys
 sys.path.append('..')
 from mlflow_arabic_ocr_config import ArabicOCRExperiment
-
-# We'll import these when available
-try:
-    from unsloth import FastVisionModel, is_bf16_supported
-    from transformers import AutoModel
-    import torch
-    # Check if CUDA is available
-    if torch.cuda.is_available():
-        UNSLOTH_AVAILABLE = True
-        GPU_AVAILABLE = True
-    else:
-        UNSLOTH_AVAILABLE = False
-        GPU_AVAILABLE = False
-        print("⚠️ GPU not available. Training requires CUDA-compatible GPU.")
-except ImportError as e:
-    UNSLOTH_AVAILABLE = False
-    GPU_AVAILABLE = False
-    print(f"⚠️ Unsloth not available: {e}. Install with: pip install unsloth")
 
 
 class ArabicOCRTrainer:

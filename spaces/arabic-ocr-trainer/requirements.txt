@@ -1,5 +1,6 @@
 gradio>=4.0.0
 torch>=2.0.0
+torchvision>=0.15.0
 transformers>=4.35.0
 datasets>=2.14.0
 accelerate>=0.24.0
@@ -8,6 +9,10 @@ arabic-reshaper>=3.0.0
 python-bidi>=0.4.2
 huggingface-hub>=0.19.0
 peft>=0.6.0
+fastapi>=0.100.0
+xformers
+trl>=0.8.6
+bitsandbytes>=0.43.0
 
 # Unsloth for efficient training
 unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git
