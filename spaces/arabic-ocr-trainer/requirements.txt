@@ -7,13 +7,14 @@ accelerate>=0.24.0
 mlflow>=2.8.0
 arabic-reshaper>=3.0.0
 python-bidi>=0.4.2
-huggingface-hub>=0.19.0
+huggingface-hub[cli]>=0.19.0
 peft>=0.6.0
 fastapi>=0.100.0
 xformers
 trl>=0.8.6
 bitsandbytes>=0.43.0
 addict>=2.4.0
+easydict>=1.10
 numpy>=1.24.0
 Pillow>=9.0.0
 requests>=2.28.0
