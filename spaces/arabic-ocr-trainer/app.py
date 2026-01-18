@@ -6,6 +6,13 @@ Provides both Gradio UI for manual training and REST API for automation.
 Runs on L4 GPU for efficient LoRA fine-tuning.
 """
 
+# Import Unsloth FIRST before any other ML libraries to avoid import order warnings
+try:
+    import unsloth
+    UNSLOTH_AVAILABLE = True
+except ImportError:
+    UNSLOTH_AVAILABLE = False
+
 import os
 import sys
 import json
@@ -136,7 +143,13 @@ class ArabicOCRTrainingSpace:
 
         try:
             # Import training pipeline
-            from pipelines.arabic_ocr_training_pipeline import ArabicOCRTrainer, GPU_AVAILABLE
+            from pipelines.arabic_ocr_training_pipeline import ArabicOCRTrainer
+
+            # Try to import GPU_AVAILABLE, fallback if not available
+            try:
+                from pipelines.arabic_ocr_training_pipeline import GPU_AVAILABLE
+            except ImportError:
+                GPU_AVAILABLE = False
 
             # Check GPU availability
             if not GPU_AVAILABLE:

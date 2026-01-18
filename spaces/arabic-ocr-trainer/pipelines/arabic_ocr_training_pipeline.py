@@ -6,17 +6,7 @@ This pipeline follows the notebooks/arabic_ocr_finetune.ipynb approach exactly,
 integrating LoRA fine-tuning with MLflow tracking for production use.
 """
 
-import os
-import tempfile
-import logging
-from pathlib import Path
-from typing import Dict, List, Any, Optional
-import mlflow
-import torch
-from datasets import load_dataset
-import json
-
-# Import Unsloth FIRST before transformers (required by Unsloth)
+# Import Unsloth FIRST before any other ML libraries (CRITICAL!)
 try:
     import unsloth
     from unsloth import FastVisionModel, is_bf16_supported
@@ -25,12 +15,16 @@ except ImportError as e:
     UNSLOTH_AVAILABLE = False
     print(f"⚠️ Unsloth not available: {e}. Install with: pip install unsloth")
 
-# Now import transformers after Unsloth
-from transformers import Trainer, TrainingArguments
-if UNSLOTH_AVAILABLE:
-    from transformers import AutoModel
+# Now import other libraries after Unsloth
+import os
+import tempfile
+import logging
+from pathlib import Path
+from typing import Dict, List, Any, Optional
+import torch
+import json
 
-# Check GPU availability
+# Check GPU availability early
 try:
     if torch.cuda.is_available() and UNSLOTH_AVAILABLE:
         GPU_AVAILABLE = True
@@ -43,10 +37,20 @@ try:
 except Exception:
     GPU_AVAILABLE = False
 
+# Import ML libraries after Unsloth setup
+import mlflow
+from datasets import load_dataset
+from transformers import Trainer, TrainingArguments
+if UNSLOTH_AVAILABLE:
+    from transformers import AutoModel
+
 # Import our MLflow integration
 import sys
 sys.path.append('..')
 from mlflow_arabic_ocr_config import ArabicOCRExperiment
+
+# Module exports for external use
+__all__ = ['ArabicOCRTrainer', 'UNSLOTH_AVAILABLE', 'GPU_AVAILABLE']
 
 
 class ArabicOCRTrainer:
