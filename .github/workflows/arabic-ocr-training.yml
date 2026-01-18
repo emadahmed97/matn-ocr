@@ -117,26 +117,42 @@ jobs:
 
       - name: Trigger HuggingFace Spaces training
         id: trigger
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_URL: ${{ secrets.HF_SPACE_URL }}
         run: |
-          # For now, we'll simulate the trigger
-          # In production, this would call HF Spaces API
-
           echo "🚀 Triggering training on HuggingFace Spaces..."
           echo "📊 Configuration:"
           cat training_config.json | jq .
 
-          # Simulate successful trigger
-          echo "success=true" >> $GITHUB_OUTPUT
-          echo "space_url=https://huggingface.co/spaces/your-org/arabic-ocr-trainer" >> $GITHUB_OUTPUT
+          # Make real API call to HuggingFace Spaces
+          response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -X POST "${HF_SPACE_URL}/api/train" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${HF_TOKEN}" \
+            -d @training_config.json)
 
-          # TODO: Replace with actual HF Spaces API call
-          # curl -X POST \
-          #   -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
-          #   -H "Content-Type: application/json" \
-          #   -d @training_config.json \
-          #   "${{ secrets.HF_SPACE_URL }}/api/train"
+          # Extract HTTP status and response body
+          http_status=$(echo "$response" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          response_body=$(echo "$response" | sed -e 's/HTTPSTATUS:.*//g')
 
-          echo "✅ Training triggered successfully"
+          echo "🔍 Response Status: $http_status"
+          echo "📄 Response Body: $response_body"
+
+          # Check if request was successful
+          if [ "$http_status" -eq 200 ] || [ "$http_status" -eq 202 ]; then
+            echo "✅ Training triggered successfully!"
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "response=$response_body" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Failed to trigger training (HTTP $http_status)"
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "error=HTTP $http_status: $response_body" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          # Set space URL from environment
+          echo "space_url=${HF_SPACE_URL}" >> $GITHUB_OUTPUT
 
       - name: Create training run record
         run: |
