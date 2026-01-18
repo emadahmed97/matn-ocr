@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import gradio as gr
 import requests
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 # Add the main project to path
 sys.path.append(".")
@@ -290,24 +292,46 @@ def create_gradio_interface():
 
     return interface
 
-# API endpoint for GitHub Actions automation
-def api_endpoint(request: gr.Request):
-    """Handle API requests for automated training."""
-    try:
-        if request.method == "POST":
-            config = request.json()
-            result = training_space.api_train(config)
-            return result
-        else:
-            return {"error": "Only POST requests supported"}
-    except Exception as e:
-        return {"error": str(e)}
 
-# Create the interface
+# Create FastAPI app for custom API endpoints
+app = FastAPI()
+
+# Create the Gradio interface
 demo = create_gradio_interface()
 
-# Add API endpoint
-demo.add_api_route("/api/train", api_endpoint, methods=["POST"])
+# Add custom API endpoint to FastAPI
+@app.post("/api/train")
+async def train_api(request: Request):
+    """REST API endpoint for automated training."""
+    try:
+        data = await request.json()
+
+        # Extract parameters
+        num_samples = data.get("num_samples", DEFAULT_CONFIG["num_samples"])
+        max_steps = data.get("max_steps", DEFAULT_CONFIG["max_steps"])
+        deploy_threshold = data.get("deploy_threshold", DEFAULT_CONFIG["deploy_threshold"])
+        experiment_name = data.get("experiment_name", f"api-run-{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+
+        # Call the training function
+        result = run_training(
+            num_samples=num_samples,
+            max_steps=max_steps,
+            learning_rate=DEFAULT_CONFIG["learning_rate"],
+            experiment_name=experiment_name,
+            deploy_threshold=deploy_threshold
+        )
+
+        return JSONResponse(content=result)
+
+    except Exception as e:
+        logger.error(f"API training failed: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e), "status": "failed"}
+        )
+
+# Mount Gradio app to FastAPI
+app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
     # Launch with API enabled

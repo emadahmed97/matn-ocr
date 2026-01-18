@@ -1,3 +1,27 @@
+---
+title: Arabic OCR Training
+emoji: 🕌
+colorFrom: blue
+colorTo: green
+sdk: gradio
+sdk_version: 4.44.1
+app_file: app.py
+pinned: false
+license: apache-2.0
+hardware: l4 
+datasets:
+- mssqpi/Arabic-OCR-Dataset
+models:
+- unsloth/DeepSeek-OCR
+tags:
+- arabic
+- ocr
+- computer-vision
+- training
+- lora
+duplicated_from: null
+---
+
 # Arabic OCR Training Space
 
 This HuggingFace Space provides automated Arabic OCR model training using DeepSeek-OCR and LoRA fine-tuning.
