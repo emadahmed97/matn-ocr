@@ -312,14 +312,17 @@ async def train_api(request: Request):
         deploy_threshold = data.get("deploy_threshold", DEFAULT_CONFIG["deploy_threshold"])
         experiment_name = data.get("experiment_name", f"api-run-{datetime.now().strftime('%Y%m%d_%H%M%S')}")
 
+        # Create config for training
+        config = {
+            "num_samples": num_samples,
+            "max_steps": max_steps,
+            "learning_rate": DEFAULT_CONFIG["learning_rate"],
+            "experiment_name": experiment_name,
+            "deploy_threshold": deploy_threshold
+        }
+
         # Call the training function
-        result = run_training(
-            num_samples=num_samples,
-            max_steps=max_steps,
-            learning_rate=DEFAULT_CONFIG["learning_rate"],
-            experiment_name=experiment_name,
-            deploy_threshold=deploy_threshold
-        )
+        result = training_space.api_train(config)
 
         return JSONResponse(content=result)
 
