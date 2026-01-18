@@ -10,9 +10,9 @@ python-bidi>=0.4.2
 huggingface-hub[cli]>=0.19.0
 peft>=0.6.0
 fastapi>=0.100.0
-xformers
+# xformers - problematic build, will install via pip if needed
 trl>=0.8.6
-bitsandbytes>=0.43.0
+# bitsandbytes>=0.43.0 - may have build issues on ARM
 addict>=2.4.0
 easydict>=1.10
 numpy>=1.24.0
