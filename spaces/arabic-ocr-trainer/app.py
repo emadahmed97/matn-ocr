@@ -136,7 +136,11 @@ class ArabicOCRTrainingSpace:
 
         try:
             # Import training pipeline
-            from pipelines.arabic_ocr_training_pipeline import ArabicOCRTrainer
+            from pipelines.arabic_ocr_training_pipeline import ArabicOCRTrainer, GPU_AVAILABLE
+
+            # Check GPU availability
+            if not GPU_AVAILABLE:
+                return "❌ Training failed: GPU not available. This space requires L4 GPU hardware."
 
             logger.info(f"🚀 Starting training run: {self.current_run_id}")
             logger.info(f"📊 Configuration: {json.dumps(config, indent=2)}")

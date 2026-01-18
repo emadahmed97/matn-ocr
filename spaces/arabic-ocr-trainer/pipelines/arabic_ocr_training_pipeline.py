@@ -26,10 +26,19 @@ from mlflow_arabic_ocr_config import ArabicOCRExperiment
 try:
     from unsloth import FastVisionModel, is_bf16_supported
     from transformers import AutoModel
-    UNSLOTH_AVAILABLE = True
-except ImportError:
+    import torch
+    # Check if CUDA is available
+    if torch.cuda.is_available():
+        UNSLOTH_AVAILABLE = True
+        GPU_AVAILABLE = True
+    else:
+        UNSLOTH_AVAILABLE = False
+        GPU_AVAILABLE = False
+        print("⚠️ GPU not available. Training requires CUDA-compatible GPU.")
+except ImportError as e:
     UNSLOTH_AVAILABLE = False
-    print("⚠️ Unsloth not available. Install with: pip install unsloth")
+    GPU_AVAILABLE = False
+    print(f"⚠️ Unsloth not available: {e}. Install with: pip install unsloth")
 
 
 class ArabicOCRTrainer:
