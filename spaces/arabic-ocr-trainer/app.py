@@ -178,6 +178,9 @@ class ArabicOCRTrainingSpace:
         Returns:
             Extracted Arabic text
         """
+        import io as _io
+        import sys as _sys
+
         model, tokenizer = self.load_inference_model()
 
         # Save image to a temp file since model.infer() expects a file path
@@ -186,21 +189,47 @@ class ArabicOCRTrainingSpace:
             tmp_path = tmp.name
 
         try:
-            result = model.infer(
-                tokenizer,
-                prompt=INFERENCE_CONFIG["prompt"],
-                image_file=tmp_path,
-                output_path=tempfile.gettempdir(),
-                base_size=INFERENCE_CONFIG["base_size"],
-                image_size=INFERENCE_CONFIG["image_size"],
-                crop_mode=INFERENCE_CONFIG["crop_mode"],
-                save_results=False,
-                test_compress=False,
-            )
-            # model.infer() returns the recognized text as a string
-            if isinstance(result, str):
-                return result.strip()
-            return str(result).strip()
+            # model.infer() prints the OCR text to stdout and returns None,
+            # so we capture stdout to get the actual text.
+            capture = _io.StringIO()
+            old_stdout = _sys.stdout
+            _sys.stdout = capture
+
+            try:
+                result = model.infer(
+                    tokenizer,
+                    prompt=INFERENCE_CONFIG["prompt"],
+                    image_file=tmp_path,
+                    output_path=tempfile.gettempdir(),
+                    base_size=INFERENCE_CONFIG["base_size"],
+                    image_size=INFERENCE_CONFIG["image_size"],
+                    crop_mode=INFERENCE_CONFIG["crop_mode"],
+                    save_results=False,
+                    test_compress=False,
+                )
+            finally:
+                _sys.stdout = old_stdout
+
+            # If infer() returned a string, use it directly
+            if result is not None and str(result).strip():
+                return str(result).strip()
+
+            # Otherwise parse the captured stdout for the OCR text
+            # The output contains debug lines like "BASE: ...", "PATCHES: ..."
+            # followed by the actual OCR text, then "===save results===" etc.
+            captured = capture.getvalue()
+            lines = captured.strip().split("\n")
+            text_lines = []
+            for line in lines:
+                stripped = line.strip()
+                # Skip debug/status lines
+                if not stripped:
+                    continue
+                if stripped.startswith(("=", "BASE:", "PATCHES:", "image:", "other:")):
+                    continue
+                text_lines.append(stripped)
+
+            return "\n".join(text_lines)
         finally:
             os.unlink(tmp_path)
 

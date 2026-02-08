@@ -1,6 +1,4 @@
-# Arabic OCR for Classical Islamic Texts - Implementation Plan
-
-This document outlines our plan to adapt the ML School codebase from penguin classification to Arabic OCR for classical Islamic texts using Nougat-small architecture.
+# Matn - Arabic OCR for Classical Islamic Texts
 
 ## Project Overview
 
@@ -10,20 +8,20 @@ We're building an end-to-end machine learning system that can:
 - Handle diacritics and classical Arabic conventions
 - Deploy as a production-ready service
 
-**Dataset**: MohamedRashad/arabic-books (8,647 Arabic books, 4.8GB text)
-**Model**: Microsoft Nougat-small (fine-tuned for Arabic manuscripts)
-**Architecture**: Vision Transformer → Text Generation
+**Dataset**: mssqpi/Arabic-OCR-Dataset (2.16M image-text pairs)
+**Model**: DeepSeek-OCR (fine-tuned with LoRA via Unsloth)
+**Architecture**: Vision Transformer Encoder → Language Model Decoder
+**Trained Model**: https://huggingface.co/emadahmed97/matn-ocr-arabic-finetuned
 
 ## Implementation Phases
 
 ### Phase 1: Introduction & Setup
-Following `.guide/introduction/` structure:
 
 #### 1.1 Environment Setup
-- ✅ Install required dependencies (datasets, transformers)
-- ✅ Explore Arabic books dataset structure
-- 🔲 Set up Nougat model integration
-- 🔲 Configure Arabic text processing pipeline
+- ✅ Install required dependencies (datasets, transformers, unsloth)
+- ✅ Explore Arabic OCR dataset structure
+- ✅ Set up DeepSeek-OCR model integration
+- ✅ Configure Arabic text processing pipeline
 
 #### 1.2 Data Exploration & Analysis (EDA)
 - ✅ Dataset statistics and sample analysis
@@ -37,17 +35,16 @@ Following `.guide/introduction/` structure:
 - ✅ Create OCR-specific logging and tracking
 
 ### Phase 2: Training Pipeline Development
-Following `.guide/training-pipeline/` structure:
 
 #### 2.1 Data Loading & Preprocessing
-- ✅ Replace penguin dataset with `mssqpi/Arabic-OCR-Dataset`
-- ✅ Implement Arabic text normalization (reuse from Section 1.2)
-- ✅ Use HuggingFace datasets for simple loading
+- ✅ Load `mssqpi/Arabic-OCR-Dataset` via HuggingFace datasets
+- ✅ Implement Arabic text normalization
 - ✅ Convert dataset to conversation format for fine-tuning
+- ✅ DeepSeekOCRDataCollator for image-text pair processing
 
 #### 2.2 Model Architecture Setup
-- ✅ Use DeepSeek-OCR instead of Nougat (following notebook approach)
-- ✅ Configure LoRA fine-tuning for efficient training
+- ✅ DeepSeek-OCR as base vision-language model
+- ✅ Configure LoRA fine-tuning for efficient training (2% of parameters)
 - ✅ Set up Unsloth for 2x faster training
 - ✅ Implement conversation-based training format
 
@@ -66,8 +63,8 @@ Following `.guide/training-pipeline/` structure:
 - ✅ Character Error Rate (CER)
 - ✅ Word Error Rate (WER)
 - ✅ BLEU score for text quality
-- ✅ Diacritic accuracy assessment (integrated from Section 1.2)
-- ✅ Islamic terminology recognition accuracy (integrated from Section 1.2)
+- ✅ Diacritic accuracy assessment
+- ✅ Islamic terminology recognition accuracy
 
 #### 2.6 Model Registration
 - ✅ Register best performing models (integrated in training pipeline)
@@ -75,7 +72,6 @@ Following `.guide/training-pipeline/` structure:
 - ✅ Model metadata and documentation (automated via pipeline)
 
 ### Phase 3: MLOps Automation Pipeline
-Building automated training and deployment infrastructure:
 
 #### 3.1 GitHub Actions Automation
 - ✅ Create workflow for automated training triggers
@@ -135,7 +131,6 @@ Comprehensive monitoring and evaluation system:
 - 🔲 Automated retraining triggers based on performance
 
 ### Phase 5: Model Serving
-Following `.guide/serving-model/` structure:
 
 #### 5.1 Local Deployment
 - 🔲 MLflow model serving setup
@@ -150,7 +145,6 @@ Following `.guide/serving-model/` structure:
 - 🔲 Performance optimization
 
 ### Phase 6: AWS Deployment
-Following `.guide/aws/` structure:
 
 #### 6.1 Infrastructure Setup
 - 🔲 CloudFormation templates for OCR
@@ -176,22 +170,29 @@ Following `.guide/aws/` structure:
 ```
 Input: Manuscript Image (PNG/JPEG)
   ↓
-Vision Transformer Encoder
+DeepSeek-OCR Vision Encoder
   ↓
-Arabic Language Model Decoder
+Language Model Decoder (with LoRA adapters)
   ↓
-Output: Structured Arabic Text (Markdown)
+Output: Arabic Text
 ```
 
-### Dataset Processing
+### Training Pipeline
 ```
-Arabic Books Text Corpus
+mssqpi/Arabic-OCR-Dataset (2.16M samples)
   ↓
-Text Normalization & Cleaning
+Conversation Format (User: <image> + prompt, Assistant: text)
   ↓
-Synthetic Image Generation
+DeepSeekOCRDataCollator (image preprocessing + tokenization)
   ↓
-Image-Text Pairs for Training
+LoRA Fine-tuning via Unsloth (2% of parameters)
+  ↓
+Push LoRA adapters to HuggingFace Hub
+```
+
+### Inference Pipeline
+```
+Upload Image → Load Base Model + LoRA Adapters → model.infer() → Arabic Text
 ```
 
 ### Evaluation Pipeline
@@ -201,14 +202,6 @@ OCR Output → Character/Word Error Rate
            → Diacritic Accuracy
            → Islamic Term Recognition
 ```
-
-## Key Adaptations from Original Codebase
-
-1. **Data Format**: CSV → Image-Text pairs
-2. **Model Type**: Classification → Sequence Generation
-3. **Evaluation**: Accuracy → CER/WER/BLEU
-4. **Features**: Structured columns → Image pixels
-5. **Output**: Class labels → Arabic text sequences
 
 ## Arabic-Specific Considerations
 
@@ -251,43 +244,25 @@ OCR Output → Character/Word Error Rate
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
-### Automation Phases
-1. **Phase 1**: GitHub Actions + HF Spaces training automation
-2. **Phase 2**: Model registry + automated deployment gates
-3. **Phase 3**: A/B testing + continuous monitoring
-4. **Phase 4**: Auto-retraining + cost optimization
+## Current Status
 
-## Next Steps
-
-### ✅ **Completed Phases**
+### Completed
 - **Phase 1**: Introduction & Setup (Arabic text processing, MLflow integration)
 - **Phase 2**: Training Pipeline Development (DeepSeek-OCR + LoRA fine-tuning)
-- **Phase 3 (partial)**: MLOps Automation
+- **Phase 3**: MLOps Automation
   - ✅ GitHub Actions workflow for automated training triggers
-  - ✅ HF Spaces training environment with Gradio UI + REST API (L4 GPU)
-  - ✅ Real data collator ported from notebook (DeepSeekOCRDataCollator)
-  - ✅ Auto-push trained LoRA to HF Hub (`emadahmed97/matn-ocr-arabic-finetuned`)
+  - ✅ HF Spaces training + inference environment with Gradio UI + REST API (L4 GPU)
+  - ✅ DeepSeekOCRDataCollator ported from notebook
+  - ✅ Auto-push trained LoRA to HF Hub
   - ✅ MLflow experiment tracking (local SQLite on Space)
+  - ✅ Inference tab with RTL output + `/api/infer` endpoint
+  - ✅ Model loading: base DeepSeek-OCR + LoRA adapters from Hub
 
-### 🚀 **Current Phase: Inference Pipeline (Phase 3.4)**
-1. **Add Inference tab** to HF Spaces Gradio UI (upload image → OCR text)
-2. **Add `/api/infer` REST endpoint** for programmatic inference
-3. **Load LoRA model** from HF Hub (`emadahmed97/matn-ocr-arabic-finetuned`)
-4. **Handle RTL text** formatting and display
-
-### 📋 **Implementation Priority**
-1. Inference tab in Gradio (image upload → model.infer() → Arabic text output)
-2. `/api/infer` REST endpoint
-3. Model caching (load once, reuse across requests)
-4. RTL text formatting and confidence scoring
-
-### 💡 **Key Advantages Achieved**
-- **Simplified approach**: DeepSeek-OCR instead of complex Nougat setup
-- **Proven dataset**: 2.16M samples from `mssqpi/Arabic-OCR-Dataset`
-- **Efficient training**: LoRA fine-tuning (~2 minutes for 10 steps, ~10 minutes for 60 steps)
-- **End-to-end pipeline**: Train → Save → Push to Hub, all from Gradio UI
-- **Trained model**: https://huggingface.co/emadahmed97/matn-ocr-arabic-finetuned
+### Up Next
+- **Phase 4**: Evaluation & Monitoring Pipeline
+- **Phase 5**: Model Serving
+- **Phase 6**: AWS Deployment
 
 ---
 
-*This plan follows the ML School methodology while adapting for Arabic OCR challenges and opportunities.*
+*Matn - Arabic OCR for classical Islamic texts, powered by DeepSeek-OCR with LoRA fine-tuning.*
