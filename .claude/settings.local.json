@@ -7,7 +7,9 @@
       "Bash(pip install:*)",
       "Bash(just arabic-test:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(dpkg:*)",
+      "Bash(apt list:*)"
     ],
     "deny": [],
     "ask": []

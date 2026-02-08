@@ -90,16 +90,16 @@ Building automated training and deployment infrastructure:
 - ✅ Add real-time training progress monitoring
 
 #### 3.3 Model Registry & Versioning
-- 🔲 Automated model registration based on performance
-- 🔲 Version control integration with HuggingFace Hub
+- ✅ Auto-push trained LoRA adapters to HuggingFace Hub (via HF_TOKEN + HF_MODEL_REPO)
+- ✅ Model saved at: https://huggingface.co/emadahmed97/matn-ocr-arabic-finetuned
 - 🔲 A/B testing infrastructure setup
 - 🔲 Model promotion workflow (dev → staging → prod)
 
 #### 3.4 Inference Pipeline
-- 🔲 Create PyFunc wrapper for DeepSeek-OCR
-- 🔲 Implement Arabic text post-processing
+- 🔲 Add Inference tab to HF Spaces Gradio UI (upload image → OCR text output)
+- 🔲 Add `/api/infer` REST endpoint for programmatic inference
+- 🔲 Load LoRA model from HF Hub (`emadahmed97/matn-ocr-arabic-finetuned`)
 - 🔲 Handle RTL text formatting and confidence scoring
-- 🔲 Deploy inference endpoints with auto-scaling
 
 ### Phase 4: Evaluation & Monitoring Pipeline
 Comprehensive monitoring and evaluation system:
@@ -262,24 +262,31 @@ OCR Output → Character/Word Error Rate
 ### ✅ **Completed Phases**
 - **Phase 1**: Introduction & Setup (Arabic text processing, MLflow integration)
 - **Phase 2**: Training Pipeline Development (DeepSeek-OCR + LoRA fine-tuning)
+- **Phase 3 (partial)**: MLOps Automation
+  - ✅ GitHub Actions workflow for automated training triggers
+  - ✅ HF Spaces training environment with Gradio UI + REST API (L4 GPU)
+  - ✅ Real data collator ported from notebook (DeepSeekOCRDataCollator)
+  - ✅ Auto-push trained LoRA to HF Hub (`emadahmed97/matn-ocr-arabic-finetuned`)
+  - ✅ MLflow experiment tracking (local SQLite on Space)
 
-### 🚀 **Current Phase: MLOps Automation (Phase 3)**
-1. **Create GitHub Actions workflow** for automated training triggers
-2. **Set up HuggingFace Spaces** with L4 GPU for training environment
-3. **Implement model registry** with automated versioning and deployment gates
-4. **Build monitoring dashboard** with real-time evaluation metrics
+### 🚀 **Current Phase: Inference Pipeline (Phase 3.4)**
+1. **Add Inference tab** to HF Spaces Gradio UI (upload image → OCR text)
+2. **Add `/api/infer` REST endpoint** for programmatic inference
+3. **Load LoRA model** from HF Hub (`emadahmed97/matn-ocr-arabic-finetuned`)
+4. **Handle RTL text** formatting and display
 
 ### 📋 **Implementation Priority**
-1. GitHub Actions workflow (`arabic-ocr-training.yml`)
-2. HF Spaces training environment with Gradio + API
-3. Model performance gating (CER < 5% threshold)
-4. Production inference endpoint deployment
+1. Inference tab in Gradio (image upload → model.infer() → Arabic text output)
+2. `/api/infer` REST endpoint
+3. Model caching (load once, reuse across requests)
+4. RTL text formatting and confidence scoring
 
 ### 💡 **Key Advantages Achieved**
 - **Simplified approach**: DeepSeek-OCR instead of complex Nougat setup
 - **Proven dataset**: 2.16M samples from `mssqpi/Arabic-OCR-Dataset`
-- **Efficient training**: LoRA fine-tuning (~10 minutes per run)
-- **Production ready**: MLflow tracking + automated deployment
+- **Efficient training**: LoRA fine-tuning (~2 minutes for 10 steps, ~10 minutes for 60 steps)
+- **End-to-end pipeline**: Train → Save → Push to Hub, all from Gradio UI
+- **Trained model**: https://huggingface.co/emadahmed97/matn-ocr-arabic-finetuned
 
 ---
 
