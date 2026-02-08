@@ -96,10 +96,10 @@ Building automated training and deployment infrastructure:
 - 🔲 Model promotion workflow (dev → staging → prod)
 
 #### 3.4 Inference Pipeline
-- 🔲 Add Inference tab to HF Spaces Gradio UI (upload image → OCR text output)
-- 🔲 Add `/api/infer` REST endpoint for programmatic inference
-- 🔲 Load LoRA model from HF Hub (`emadahmed97/matn-ocr-arabic-finetuned`)
-- 🔲 Handle RTL text formatting and confidence scoring
+- ✅ Add Inference tab to HF Spaces Gradio UI (upload image → OCR text output)
+- ✅ Add `/api/infer` REST endpoint for programmatic inference
+- ✅ Load LoRA model from HF Hub (`emadahmed97/matn-ocr-arabic-finetuned`)
+- ✅ Handle RTL text formatting and confidence scoring
 
 ### Phase 4: Evaluation & Monitoring Pipeline
 Comprehensive monitoring and evaluation system:

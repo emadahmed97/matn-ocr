@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Arabic OCR Training Space - HuggingFace Spaces Application
+Arabic OCR Training & Inference Space - HuggingFace Spaces Application
 
-Provides both Gradio UI for manual training and REST API for automation.
-Runs on L4 GPU for efficient LoRA fine-tuning.
+Provides Gradio UI for manual training and inference, plus REST APIs for automation.
+Runs on L4 GPU for efficient LoRA fine-tuning and inference.
 """
 
 # Import Unsloth FIRST before any other ML libraries to avoid import order warnings
@@ -18,13 +18,16 @@ import sys
 import json
 import tempfile
 import logging
+import base64
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
 import gradio as gr
 import requests
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.responses import JSONResponse
+from PIL import Image
 
 # Add the main project to path
 sys.path.append(".")
@@ -46,12 +49,24 @@ DEFAULT_CONFIG = {
     "deploy_threshold": 0.05
 }
 
+INFERENCE_CONFIG = {
+    "hf_model_repo": os.environ.get("HF_MODEL_REPO", "emadahmed97/matn-ocr-arabic-finetuned"),
+    "base_model": "unsloth/DeepSeek-OCR",
+    "base_size": 1024,
+    "image_size": 640,
+    "crop_mode": True,
+    "prompt": "<image>\nFree OCR. ",
+}
+
 class ArabicOCRTrainingSpace:
-    """HuggingFace Spaces training interface for Arabic OCR."""
+    """HuggingFace Spaces training and inference interface for Arabic OCR."""
 
     def __init__(self):
         self.training_active = False
         self.current_run_id = None
+        self._inference_model = None
+        self._inference_tokenizer = None
+        self._model_loaded = False
         self.setup_mlflow()
 
     def setup_mlflow(self):
@@ -135,6 +150,80 @@ class ArabicOCRTrainingSpace:
                 "message": str(e),
                 "status": "error"
             }
+
+    def load_inference_model(self):
+        """Load the fine-tuned LoRA model from HuggingFace Hub. Caches after first load."""
+        if self._model_loaded:
+            return self._inference_model, self._inference_tokenizer
+
+        from pipelines.arabic_ocr.model import load_trained_model
+
+        repo = INFERENCE_CONFIG["hf_model_repo"]
+        logger.info(f"Loading inference model from {repo}...")
+
+        model, tokenizer = load_trained_model(model_path=repo)
+        self._inference_model = model
+        self._inference_tokenizer = tokenizer
+        self._model_loaded = True
+        logger.info("Inference model loaded and cached.")
+        return model, tokenizer
+
+    def run_inference(self, image: Image.Image) -> str:
+        """
+        Run OCR inference on a single image.
+
+        Args:
+            image: PIL Image to process
+
+        Returns:
+            Extracted Arabic text
+        """
+        model, tokenizer = self.load_inference_model()
+
+        # Save image to a temp file since model.infer() expects a file path
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            image.save(tmp, format="PNG")
+            tmp_path = tmp.name
+
+        try:
+            result = model.infer(
+                tokenizer,
+                prompt=INFERENCE_CONFIG["prompt"],
+                image_file=tmp_path,
+                output_path=tempfile.gettempdir(),
+                base_size=INFERENCE_CONFIG["base_size"],
+                image_size=INFERENCE_CONFIG["image_size"],
+                crop_mode=INFERENCE_CONFIG["crop_mode"],
+                save_results=False,
+                test_compress=False,
+            )
+            # model.infer() returns the recognized text as a string
+            if isinstance(result, str):
+                return result.strip()
+            return str(result).strip()
+        finally:
+            os.unlink(tmp_path)
+
+    def gradio_infer(self, image) -> str:
+        """Gradio handler for inference tab."""
+        if image is None:
+            return "Please upload an image."
+
+        try:
+            start = time.time()
+
+            # Gradio Image component returns a numpy array or PIL Image
+            if not isinstance(image, Image.Image):
+                image = Image.fromarray(image)
+
+            text = self.run_inference(image)
+            elapsed = time.time() - start
+
+            return f"{text}\n\n---\nProcessed in {elapsed:.2f}s"
+
+        except Exception as e:
+            logger.error(f"Inference failed: {e}", exc_info=True)
+            return f"Inference failed: {str(e)}"
 
     def _execute_training(self, config: Dict[str, Any]) -> str:
         """Execute the actual training with the given configuration."""
@@ -234,78 +323,119 @@ class ArabicOCRTrainingSpace:
 training_space = ArabicOCRTrainingSpace()
 
 def create_gradio_interface():
-    """Create the Gradio interface for manual training."""
+    """Create the Gradio interface with Training and Inference tabs."""
 
-    with gr.Blocks(title="Arabic OCR Training", theme=gr.themes.Soft()) as interface:
-        gr.Markdown("# 🕌 Arabic OCR Training Space")
-        gr.Markdown("Fine-tune DeepSeek-OCR for Arabic manuscripts using LoRA")
+    with gr.Blocks(title="Arabic OCR - Training & Inference", theme=gr.themes.Soft()) as interface:
+        gr.Markdown("# Arabic OCR - Matn")
+        gr.Markdown("Fine-tune and run DeepSeek-OCR for Arabic manuscripts using LoRA")
 
-        with gr.Row():
-            with gr.Column():
-                gr.Markdown("## ⚙️ Training Configuration")
-
-                num_samples = gr.Slider(
-                    minimum=10, maximum=10000, value=1000, step=10,
-                    label="Number of Training Samples",
-                    info="More samples = better quality but longer training"
+        with gr.Tabs():
+            # ── Inference Tab ──
+            with gr.TabItem("Inference"):
+                gr.Markdown("## Upload an image to extract Arabic text")
+                gr.Markdown(
+                    f"Model: `{INFERENCE_CONFIG['hf_model_repo']}` "
+                    f"| Base: `{INFERENCE_CONFIG['base_model']}`"
                 )
 
-                max_steps = gr.Slider(
-                    minimum=10, maximum=500, value=60, step=10,
-                    label="Training Steps",
-                    info="60 steps ≈ 10 minutes. More steps = better convergence"
+                with gr.Row():
+                    with gr.Column():
+                        infer_image = gr.Image(
+                            label="Upload Image",
+                            type="pil",
+                            sources=["upload", "clipboard"],
+                        )
+                        infer_btn = gr.Button("Run OCR", variant="primary", size="lg")
+
+                    with gr.Column():
+                        infer_output = gr.Textbox(
+                            label="OCR Output",
+                            lines=15,
+                            rtl=True,
+                            info="Extracted Arabic text (right-to-left)",
+                        )
+
+                infer_btn.click(
+                    fn=training_space.gradio_infer,
+                    inputs=[infer_image],
+                    outputs=infer_output,
                 )
 
-                learning_rate = gr.Slider(
-                    minimum=1e-5, maximum=1e-3, value=2e-4, step=1e-5,
-                    label="Learning Rate",
-                    info="Higher = faster learning but less stable"
+                gr.Markdown("""
+                **Tips**
+                - First inference will take longer as the model loads (~30s)
+                - Subsequent inferences reuse the cached model
+                - Supports PNG, JPEG, and other common image formats
+                """)
+
+            # ── Training Tab ──
+            with gr.TabItem("Training"):
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown("## Training Configuration")
+
+                        num_samples = gr.Slider(
+                            minimum=10, maximum=10000, value=1000, step=10,
+                            label="Number of Training Samples",
+                            info="More samples = better quality but longer training"
+                        )
+
+                        max_steps = gr.Slider(
+                            minimum=10, maximum=500, value=60, step=10,
+                            label="Training Steps",
+                            info="60 steps = 10 minutes. More steps = better convergence"
+                        )
+
+                        learning_rate = gr.Slider(
+                            minimum=1e-5, maximum=1e-3, value=2e-4, step=1e-5,
+                            label="Learning Rate",
+                            info="Higher = faster learning but less stable"
+                        )
+
+                        deploy_threshold = gr.Slider(
+                            minimum=0.01, maximum=0.2, value=0.05, step=0.01,
+                            label="Auto-Deploy Threshold (CER)",
+                            info="Deploy model if Character Error Rate < threshold"
+                        )
+
+                        experiment_name = gr.Textbox(
+                            value="gradio-arabic-ocr",
+                            label="Experiment Name",
+                            info="MLflow experiment name for tracking"
+                        )
+
+                    with gr.Column():
+                        gr.Markdown("## Training Progress")
+
+                        output_text = gr.Textbox(
+                            lines=20,
+                            label="Training Output",
+                            info="Real-time training progress and results"
+                        )
+
+                with gr.Row():
+                    train_btn = gr.Button("Start Training", variant="primary", size="lg")
+                    stop_btn = gr.Button("Stop Training", variant="secondary", size="lg")
+
+                # Training function that yields progress
+                def train_with_progress(*args):
+                    for progress in training_space.gradio_train(*args):
+                        yield progress
+
+                train_btn.click(
+                    fn=train_with_progress,
+                    inputs=[num_samples, max_steps, learning_rate, deploy_threshold, experiment_name],
+                    outputs=output_text,
+                    show_progress=True
                 )
 
-                deploy_threshold = gr.Slider(
-                    minimum=0.01, maximum=0.2, value=0.05, step=0.01,
-                    label="Auto-Deploy Threshold (CER)",
-                    info="Deploy model if Character Error Rate < threshold"
-                )
-
-                experiment_name = gr.Textbox(
-                    value="gradio-arabic-ocr",
-                    label="Experiment Name",
-                    info="MLflow experiment name for tracking"
-                )
-
-            with gr.Column():
-                gr.Markdown("## 📊 Training Progress")
-
-                output_text = gr.Textbox(
-                    lines=20,
-                    label="Training Output",
-                    info="Real-time training progress and results"
-                )
-
-        with gr.Row():
-            train_btn = gr.Button("🚀 Start Training", variant="primary", size="lg")
-            stop_btn = gr.Button("⛔ Stop Training", variant="secondary", size="lg")
-
-        # Training function that yields progress
-        def train_with_progress(*args):
-            for progress in training_space.gradio_train(*args):
-                yield progress
-
-        train_btn.click(
-            fn=train_with_progress,
-            inputs=[num_samples, max_steps, learning_rate, deploy_threshold, experiment_name],
-            outputs=output_text,
-            show_progress=True
-        )
-
-        gr.Markdown("""
-        ## 💡 Tips
-        - **Quick test**: 100 samples, 10 steps (~2 minutes)
-        - **Development**: 1000 samples, 60 steps (~10 minutes)
-        - **Production**: 5000+ samples, 200+ steps (~30+ minutes)
-        - **Cost**: L4 GPU ≈ $0.60/hour
-        """)
+                gr.Markdown("""
+                **Tips**
+                - **Quick test**: 100 samples, 10 steps (~2 minutes)
+                - **Development**: 1000 samples, 60 steps (~10 minutes)
+                - **Production**: 5000+ samples, 200+ steps (~30+ minutes)
+                - **Cost**: L4 GPU ~ $0.60/hour
+                """)
 
     return interface
 
@@ -345,6 +475,55 @@ async def train_api(request: Request):
 
     except Exception as e:
         logger.error(f"API training failed: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e), "status": "failed"}
+        )
+
+@app.post("/api/infer")
+async def infer_api(request: Request):
+    """
+    REST API endpoint for OCR inference.
+
+    Accepts JSON with either:
+      - "image_base64": base64-encoded image string
+      - "image_url": URL to fetch the image from
+
+    Returns JSON with "text" (the OCR result) and "processing_time_s".
+    """
+    try:
+        data = await request.json()
+
+        image_b64 = data.get("image_base64")
+        image_url = data.get("image_url")
+
+        if image_b64:
+            import io
+            image_bytes = base64.b64decode(image_b64)
+            image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        elif image_url:
+            import io
+            resp = requests.get(image_url, timeout=30)
+            resp.raise_for_status()
+            image = Image.open(io.BytesIO(resp.content)).convert("RGB")
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Provide 'image_base64' or 'image_url' in the request body."}
+            )
+
+        start = time.time()
+        text = training_space.run_inference(image)
+        elapsed = time.time() - start
+
+        return JSONResponse(content={
+            "text": text,
+            "processing_time_s": round(elapsed, 3),
+            "model": INFERENCE_CONFIG["hf_model_repo"],
+        })
+
+    except Exception as e:
+        logger.error(f"API inference failed: {e}", exc_info=True)
         return JSONResponse(
             status_code=500,
             content={"error": str(e), "status": "failed"}
