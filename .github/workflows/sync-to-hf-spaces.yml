@@ -19,4 +19,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git push --force https://emadahmed97:$HF_TOKEN@huggingface.co/spaces/emadahmed97/arabic-ocr-trainer main
+          git checkout --orphan hf-deploy
+          git add -A
+          git commit -m "Deploy to HuggingFace Spaces"
+          git push --force https://emadahmed97:$HF_TOKEN@huggingface.co/spaces/emadahmed97/arabic-ocr-trainer hf-deploy:main
