@@ -7,7 +7,7 @@ accelerate>=0.24.0
 mlflow>=2.8.0
 arabic-reshaper>=3.0.0
 python-bidi>=0.4.2
-huggingface-hub[cli]>=0.19.0
+huggingface-hub>=0.19.0
 peft>=0.6.0
 fastapi>=0.100.0
 # xformers - problematic build, will install via pip if needed
@@ -31,4 +31,4 @@ sentencepiece>=0.1.99
 regex>=2023.6.3
 
 # Unsloth for efficient training
-unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git
+unsloth[colab-new]==2025.3.2
