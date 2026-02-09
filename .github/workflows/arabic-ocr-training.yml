@@ -64,8 +64,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install pytest mlflow datasets transformers accelerate
-          pip install arabic-reshaper python-bidi
+          pip install -r requirements.txt
+          pip install pytest
 
       - name: Run pipeline validation tests
         run: |
