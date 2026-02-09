@@ -1,53 +1,114 @@
-# Building Machine Learning Systems
+---
+title: Matn - Arabic OCR
+emoji: 🕌
+colorFrom: blue
+colorTo: green
+sdk: gradio
+sdk_version: 4.44.1
+app_file: app.py
+pinned: false
+license: apache-2.0
+hardware: l4
+datasets:
+- mssqpi/Arabic-OCR-Dataset
+models:
+- unsloth/DeepSeek-OCR
+tags:
+- arabic
+- ocr
+- computer-vision
+- training
+- lora
+---
 
-"Building Machine Learning Systems" is designed to teach you how to train, evaluate, deploy, and monitor machine learning models in production. 
+# Matn - Arabic OCR for Classical Islamic Texts
 
-In this repository, you'll find the code to build a fully-fledged, end-to-end machine learning system that you can use as a starting point for your own projects.
+An end-to-end machine learning system for extracting text from classical Arabic Islamic manuscript images, powered by DeepSeek-OCR with LoRA fine-tuning via Unsloth.
 
-This repository is part of the [Machine Learning School](https://www.ml.school) program.
+## Features
 
-## Running in a Development Container
+- **OCR Inference**: Upload a manuscript image and get Arabic text output (RTL formatted)
+- **Training Pipeline**: Fine-tune DeepSeek-OCR with LoRA on custom Arabic datasets
+- **REST API**: `/api/infer` for programmatic OCR, `/api/train` for automated training
+- **MLflow Tracking**: Experiment tracking with CER/WER/BLEU metrics
+- **GitHub Actions**: Automated training triggers on code changes, auto-sync to HF Spaces
 
-The best way to clone and run the source code from this repository is using a Development Container.
+## Architecture
 
-[![Open in Dev Containers](https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/svpino/ml.school)
+```
+Input: Manuscript Image (PNG/JPEG)
+  |
+DeepSeek-OCR Vision Encoder
+  |
+Language Model Decoder (with LoRA adapters)
+  |
+Output: Arabic Text
+```
 
-Most Integrated Development Environments support Development Containers. If you have Visual Studio Code and Docker installed, you can click the badge above or [this link](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/svpino/ml.school) to automatically install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), clone the repository into a container volume, and spin up a container.
+**Dataset**: [mssqpi/Arabic-OCR-Dataset](https://huggingface.co/datasets/mssqpi/Arabic-OCR-Dataset) (2.16M image-text pairs)
+**Trained Model**: [emadahmed97/matn-ocr-arabic-finetuned](https://huggingface.co/emadahmed97/matn-ocr-arabic-finetuned)
 
-A Development Container is a Docker container configured as a fully functional development environment isolated from your operating system. You can use your IDE to edit, build, and run the project without spending time setting up your local environment or worrying about altering it.
+## Usage
 
-You can find more information about Development Containers in the [Dev Containers documentation](https://code.visualstudio.com/docs/devcontainers/containers).
+### Inference (Gradio UI)
 
-After opening the project on IDX, click on the "Machine Learning School" extension on the left activity bar. This extension will allow you to navigate the documentation, run the pipelines, and deploy the model.
+Visit the HuggingFace Space and use the **Inference** tab to upload an image and get OCR results.
 
-**Note:** If you had the "Machine Learning School" extension installed before running the project on a Development Container, you'll need to uninstall it and rebuild the container. The extension must be installed on the container for it to work.
+### Inference (API)
 
-## Running on Google's Project IDX
+```python
+import requests, base64
 
-An alternative way to run the project is using Google's Project IDX. Clicking the button below will create and configure a development environment you can access directly from your browser:
+with open("manuscript.png", "rb") as f:
+    image_b64 = base64.b64encode(f.read()).decode()
 
-<a href="https://idx.google.com/new?template=https%3A%2F%2Fgithub.com%2Fsvpino%2Fml.school%2F">
-  <img
-    height="32"
-    alt="Open in IDX"
-    src="https://cdn.idx.dev/btn/open_dark_32.svg">
-</a>
+response = requests.post(
+    "https://emadahmed97-arabic-ocr-trainer.hf.space/api/infer",
+    json={"image_base64": image_b64}
+)
+print(response.json()["text"])
+```
 
-After opening the project on IDX, click on the "Machine Learning School" extension on the left activity bar. This extension will allow you to navigate the documentation, run the pipelines, and deploy the model.
+### Training
 
-*Note:* Project IDX is an experimental Google product and it might be unstable at times. If you are planning to take full advantage of this repository, and modify it for your own purposes, running in a Development Container is the best option.
+Training can be triggered via:
+1. **Gradio UI**: Use the Training tab on HF Spaces
+2. **REST API**: `POST /api/train` with training config
+3. **GitHub Actions**: Push changes to `pipelines/` to auto-trigger
 
-## Running the project locally
+## Development
 
-If you prefer to run the project on your local environment, you can start by 
-[forking](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) the [repository](https://github.com/svpino/ml.school) and [cloning](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) it on your computer. 
+```bash
+# Clone and set up
+git clone https://github.com/emadahmed97/matn-ocr.git
+cd matn-ocr
 
-You can run the code on any Unix-based operating system (e.g., Ubuntu or macOS). If you are using Windows, install the [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/about) (WSL).
+# Install dependencies
+pip install -r requirements.txt
 
-Open the repository using Visual Studio Code and install the ["Machine Learning School"](https://marketplace.visualstudio.com/items?itemName=tideily.mlschool) extension. If you are using WSL, you need to install the extension on the WSL environment.
+# Run basic environment tests
+python test_basic_env.py
+```
 
-Once installed, this extension will allow you to navigate the documentation, run the pipelines, and deploy the model directly from Visual Studio Code.
+## Project Structure
 
-## Contributing
+```
+app.py                          # Main Gradio + FastAPI application
+requirements.txt                # Python dependencies
+mlflow_arabic_ocr_config.py     # MLflow configuration
+pipelines/
+  arabic_ocr/
+    model.py                    # Model loading (base + LoRA)
+    preprocessing.py            # Image preprocessing
+    data_collator.py            # Training data collation
+    metrics.py                  # CER/WER/BLEU evaluation
+  arabic_ocr_training_pipeline.py  # Training orchestration
+notebooks/                      # Reference notebooks
+.github/workflows/
+  sync-to-hf-spaces.yml        # Auto-sync to HF Spaces
+  arabic-ocr-training.yml      # Automated training pipeline
+```
 
-If you find any problems with the code or have any ideas on improving it, please open an issue and share your recommendations.
+## License
+
+Apache 2.0

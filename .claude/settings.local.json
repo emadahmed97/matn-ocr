@@ -11,7 +11,8 @@
       "Bash(dpkg:*)",
       "Bash(apt list:*)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(du:*)"
     ],
     "deny": [],
     "ask": []

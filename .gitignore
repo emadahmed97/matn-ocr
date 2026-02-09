@@ -10,17 +10,27 @@ metaflow_card_cache/
 metaflow.s3.**/
 mlruns/
 mlartifacts/
+mlflow.db
 
 .DS_Store
 .ipynb_checkpoints
-.env
 .venv
 .venv*
 *.pem
-.idx/aws.nix
 
-penguins.db
-sample.json
+# Large binaries
+*.keras
+*.pkg
+*.zip
 
-mlflow.db
+# Training artifacts
+runs/
+models/
+outputs/
+
+# IDE
+.idx/
+.cursor/
+.guide/
+
 uv.lock

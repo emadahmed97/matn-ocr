@@ -130,39 +130,17 @@ Comprehensive monitoring and evaluation system:
 - 🔲 Human evaluation workflow integration
 - 🔲 Automated retraining triggers based on performance
 
-### Phase 5: Model Serving
+### Potential Future Work
 
-#### 5.1 Local Deployment
-- 🔲 MLflow model serving setup
-- 🔲 REST API for OCR endpoints
-- 🔲 Arabic text response formatting
-- 🔲 Local testing and validation
+#### Model Serving (Standalone)
+- MLflow model serving / MLServer integration
+- Scalable inference backend with load balancing and caching
+- Performance optimization
 
-#### 5.2 Production Serving
-- 🔲 MLServer integration
-- 🔲 Scalable inference backend
-- 🔲 Load balancing and caching
-- 🔲 Performance optimization
-
-### Phase 6: AWS Deployment
-
-#### 6.1 Infrastructure Setup
-- 🔲 CloudFormation templates for OCR
-- 🔲 SageMaker endpoint configuration
-- 🔲 S3 storage for manuscripts
-- 🔲 Network and security setup
-
-#### 6.2 Model Deployment
-- 🔲 SageMaker model deployment
-- 🔲 Auto-scaling configuration
-- 🔲 Monitoring and logging
-- 🔲 Cost optimization
-
-#### 6.3 MLflow Remote Setup
-- 🔲 Remote MLflow tracking server
-- 🔲 S3 artifact storage
-- 🔲 Database backend configuration
-- 🔲 Access control and security
+#### Cloud Deployment
+- CloudFormation / SageMaker endpoint configuration
+- Auto-scaling, monitoring, and cost optimization
+- Remote MLflow tracking server with S3 artifact storage
 
 ## Technical Specifications
 
@@ -257,11 +235,11 @@ OCR Output → Character/Word Error Rate
   - ✅ MLflow experiment tracking (local SQLite on Space)
   - ✅ Inference tab with RTL output + `/api/infer` endpoint
   - ✅ Model loading: base DeepSeek-OCR + LoRA adapters from Hub
+  - ✅ Repo consolidation: single repo syncs to HF Spaces via GitHub Actions
+  - ✅ `sync-to-hf-spaces.yml` workflow for auto-deploy on push to main
 
 ### Up Next
 - **Phase 4**: Evaluation & Monitoring Pipeline
-- **Phase 5**: Model Serving
-- **Phase 6**: AWS Deployment
 
 ---
 

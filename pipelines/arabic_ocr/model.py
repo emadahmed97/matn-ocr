@@ -215,21 +215,28 @@ def save_model_and_tokenizer(
 
 def load_trained_model(
     model_path: str,
-    base_model_path: str = "./deepseek_ocr"
+    base_model_name: str = "unsloth/DeepSeek-OCR"
 ) -> Tuple[torch.nn.Module, AutoTokenizer]:
     """
     Load a trained LoRA model for inference.
 
+    Loads the base DeepSeek-OCR model first, then applies the LoRA adapters
+    from the given path (local directory or HuggingFace Hub repo).
+
     Args:
-        model_path: Path to the saved LoRA model
-        base_model_path: Path to the base DeepSeek-OCR model
+        model_path: Path or HF repo with LoRA adapters (e.g. "emadahmed97/matn-ocr-arabic-finetuned")
+        base_model_name: Base model to load before applying adapters
 
     Returns:
         Tuple of (model, tokenizer) ready for inference
     """
+    from peft import PeftModel
+
     try:
+        # Step 1: Load the base model
+        print(f"Loading base model: {base_model_name}...")
         model, tokenizer = FastVisionModel.from_pretrained(
-            model_path,
+            base_model_name,
             load_in_4bit=False,
             auto_model=AutoModel,
             trust_remote_code=True,
@@ -237,8 +244,12 @@ def load_trained_model(
             use_gradient_checkpointing="unsloth",
         )
 
+        # Step 2: Apply LoRA adapters on top
+        print(f"Applying LoRA adapters from: {model_path}...")
+        model = PeftModel.from_pretrained(model, model_path)
+
         model = prepare_model_for_inference(model)
-        print(f"✅ Trained model loaded from {model_path}")
+        print(f"✅ Trained model loaded (base: {base_model_name}, adapters: {model_path})")
         return model, tokenizer
 
     except Exception as e:
