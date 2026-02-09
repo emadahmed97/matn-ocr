@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import gradio as gr
 import requests
-from fastapi import FastAPI, Request, UploadFile, File
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from PIL import Image
 
@@ -469,13 +469,12 @@ def create_gradio_interface():
     return interface
 
 
-# Create FastAPI app for custom API endpoints
-app = FastAPI()
-
 # Create the Gradio interface
 demo = create_gradio_interface()
 
-# Add custom API endpoint to FastAPI
+# Add custom API endpoints directly to Gradio's FastAPI app
+app = demo.app
+
 @app.post("/api/train")
 async def train_api(request: Request):
     """REST API endpoint for automated training."""
@@ -558,9 +557,12 @@ async def infer_api(request: Request):
             content={"error": str(e), "status": "failed"}
         )
 
-# Mount Gradio app to FastAPI
-app = gr.mount_gradio_app(app, demo, path="/")
-
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=False,
+        show_api=True,
+        show_error=True,
+        ssr_mode=False
+    )
