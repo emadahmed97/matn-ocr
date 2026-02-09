@@ -10,6 +10,7 @@ python-bidi>=0.4.2
 huggingface-hub>=0.19.0
 peft>=0.6.0
 fastapi>=0.100.0
+uvicorn>=0.24.0
 # xformers - problematic build, will install via pip if needed
 trl>=0.8.6
 # bitsandbytes>=0.43.0 - may have build issues on ARM
