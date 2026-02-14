@@ -1,7 +1,7 @@
 gradio==5.27.0
 torch>=2.0.0
 torchvision>=0.15.0
-transformers>=4.46.1,<4.49.0
+transformers>=4.46.1
 datasets>=2.14.0
 accelerate>=0.24.0
 mlflow>=2.8.0
@@ -32,4 +32,5 @@ sentencepiece>=0.1.99
 regex>=2023.6.3
 
 # Unsloth for efficient training
-unsloth[colab-new]==2025.3.2
+unsloth[colab-new]==2026.1.4
+unsloth-zoo==2026.1.4
