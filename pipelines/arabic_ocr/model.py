@@ -233,20 +233,23 @@ def load_trained_model(
     from peft import PeftModel
 
     try:
-        # Step 1: Load the base model
+        # Load base model directly with transformers (bypass unsloth for inference)
         print(f"Loading base model: {base_model_name}...")
-        model, tokenizer = FastVisionModel.from_pretrained(
+        model = AutoModel.from_pretrained(
             base_model_name,
-            load_in_4bit=False,
-            auto_model=AutoModel,
+            trust_remote_code=True,
+            torch_dtype=torch.float16,
+        )
+        tokenizer = AutoTokenizer.from_pretrained(
+            base_model_name,
             trust_remote_code=True,
         )
 
-        # Step 2: Apply LoRA adapters on top
+        # Apply LoRA adapters on top
         print(f"Applying LoRA adapters from: {model_path}...")
         model = PeftModel.from_pretrained(model, model_path)
 
-        model = prepare_model_for_inference(model)
+        model.eval()
         print(f"✅ Trained model loaded (base: {base_model_name}, adapters: {model_path})")
         return model, tokenizer
 
