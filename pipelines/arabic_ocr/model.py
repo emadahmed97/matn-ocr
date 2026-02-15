@@ -240,8 +240,6 @@ def load_trained_model(
             load_in_4bit=False,
             auto_model=AutoModel,
             trust_remote_code=True,
-            unsloth_force_compile=True,
-            use_gradient_checkpointing="unsloth",
         )
 
         # Step 2: Apply LoRA adapters on top
