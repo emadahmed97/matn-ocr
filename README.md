@@ -3,9 +3,7 @@ title: Matn - Arabic OCR
 emoji: 🕌
 colorFrom: blue
 colorTo: green
-sdk: gradio
-sdk_version: 5.27.0
-python_version: "3.10"
+sdk: docker
 app_file: app.py
 pinned: false
 license: apache-2.0

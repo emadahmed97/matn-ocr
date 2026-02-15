@@ -469,11 +469,12 @@ def create_gradio_interface():
     return interface
 
 
+# Create FastAPI app with custom API endpoints
+from fastapi import FastAPI
+app = FastAPI()
+
 # Create the Gradio interface
 demo = create_gradio_interface()
-
-# Add custom API endpoints directly to Gradio's FastAPI app
-app = demo.app
 
 @app.post("/api/train")
 async def train_api(request: Request):
@@ -557,12 +558,9 @@ async def infer_api(request: Request):
             content={"error": str(e), "status": "failed"}
         )
 
+# Mount Gradio onto FastAPI app
+app = gr.mount_gradio_app(app, demo, path="/")
+
 if __name__ == "__main__":
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,
-        show_api=True,
-        show_error=True,
-        ssr_mode=False
-    )
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=7860)
