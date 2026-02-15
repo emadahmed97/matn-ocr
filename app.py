@@ -469,14 +469,10 @@ def create_gradio_interface():
     return interface
 
 
-# Create FastAPI app with custom API endpoints
-from fastapi import FastAPI
-app = FastAPI(redirect_slashes=False)
-
 # Create the Gradio interface
 demo = create_gradio_interface()
 
-@app.post("/api/train")
+@demo.app.post("/api/train")
 async def train_api(request: Request):
     """REST API endpoint for automated training."""
     try:
@@ -509,7 +505,7 @@ async def train_api(request: Request):
             content={"error": str(e), "status": "failed"}
         )
 
-@app.post("/api/infer")
+@demo.app.post("/api/infer")
 async def infer_api(request: Request):
     """
     REST API endpoint for OCR inference.
@@ -558,9 +554,12 @@ async def infer_api(request: Request):
             content={"error": str(e), "status": "failed"}
         )
 
-# Mount Gradio onto FastAPI app
-app = gr.mount_gradio_app(app, demo, path="/")
-
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=False,
+        show_api=True,
+        show_error=True,
+        ssr_mode=False,
+    )
