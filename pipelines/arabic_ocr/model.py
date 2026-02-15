@@ -239,6 +239,7 @@ def load_trained_model(
             base_model_name,
             trust_remote_code=True,
             torch_dtype=torch.float16,
+            device_map="auto",
         )
         tokenizer = AutoTokenizer.from_pretrained(
             base_model_name,
