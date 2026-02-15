@@ -471,7 +471,7 @@ def create_gradio_interface():
 
 # Create FastAPI app with custom API endpoints
 from fastapi import FastAPI
-app = FastAPI()
+app = FastAPI(redirect_slashes=False)
 
 # Create the Gradio interface
 demo = create_gradio_interface()
