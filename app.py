@@ -134,11 +134,15 @@ class ArabicOCRTrainingSpace:
             full_config["trigger_source"] = "api"
             full_config["timestamp"] = datetime.now().isoformat()
 
-            result = self._execute_training(full_config)
+            # _execute_training is a generator (yields progress updates)
+            # Consume it fully and use the last yielded value as the result
+            result = None
+            for result in self._execute_training(full_config):
+                pass
 
             return {
                 "success": True,
-                "message": result,
+                "message": result or "Training completed",
                 "run_id": self.current_run_id,
                 "status": "completed" if "✅" in result else "failed"
             }
